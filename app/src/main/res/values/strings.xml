@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nobi VM</string>
+    <string name="title_vm">Nobi VM</string>
+    <string name="subtitle_vm">Your own VM, for this phone only. Guest runs Instagram and NobiBot only.</string>
+    <string name="label_qemu">QEMU binary</string>
+    <string name="label_guest_image">Guest image</string>
+    <string name="label_pagesize">Page size check</string>
+    <string name="label_config">Guest config (fixed)</string>
+    <string name="label_vm_status">VM status</string>
+    <string name="status_missing">MISSING</string>
+    <string name="status_present">Present</string>
+    <string name="status_ok">OK</string>
+    <string name="status_blocked">BLOCKED - see below</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_running">Running</string>
+    <string name="button_start_vm">Start VM</string>
+    <string name="button_stop_vm">Stop VM</string>
+    <string name="button_guest_image_info">Guest image download info</string>
+    <string name="vnc_placeholder_title">Guest screen (VNC)</string>
+    <string name="vnc_placeholder_text">Guest screen not connected. Start the VM to connect via VNC.</string>
+    <string name="vnc_connecting">Connecting to guest via VNC...</string>
+    <string name="button_download_image">Download guest image (1.6 GB, Wi-Fi recommended)</string>
+    <string name="download_not_started">Guest image download: not started.</string>
+    <string name="download_starting">Guest image download: starting...</string>
+    <string name="download_already_present">Guest image already present — no download needed.</string>
+    <string name="config_text">4 vCPU, 4 GB RAM, 16 GB disk, arm64-v8a only, TCG, CPU max,pauth-impdef=on</string>
+    <string name="blocker_title">Phase 2 blocker - read before building</string>
+    <string name="blocker_text">QEMU binary: PRESENT (built from source, see QEMU_BINARY.md). Guest image: download it first with the button below (Google APIs ARM 64, API 34, 1.6 GB) — it is NOT bundled in this APK. The VM has never booted on a phone yet: the boot test in BOOT_TEST.md is the verdict.</string>
+    <string name="guest_image_info_text">Guest image is NOT bundled in this APK. On first run it must be downloaded (google_apis, arm64-v8a, API 33 or 34, about 1-2 GB download, 16 GB disk) into the app private guest folder. No Instagram or NobiBot APK is bundled either - install those into the guest at setup time from InternalStorage/NobiGuard/ on the phone.</string>
+    <string name="channel_vm_name">Nobi VM</string>
+    <string name="notification_vm_title">Nobi VM is running</string>
+    <string name="notification_vm_text">The guest VM process is owned by this service.</string>
+    <string name="toast_vm_blocked">VM cannot start: QEMU binary or guest image is missing. See the blocker note.</string>
+    <string name="toast_vm_started">VM service started. Guest screen appears in the VNC view once QEMU boots.</string>
+</resources>

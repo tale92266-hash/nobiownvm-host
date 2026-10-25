@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/title_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/title_vm"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
+
+        <TextView
+            android:id="@+id/subtitle_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/subtitle_vm"
+            android:textSize="14sp"
+            android:textColor="@color/text_grey" />
+
+        <TextView
+            android:id="@+id/blocker_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="12dp"
+            android:background="#FEF2F2"
+            android:text="@string/blocker_text"
+            android:textSize="13sp"
+            android:textColor="@color/status_bad" />
+
+        <LinearLayout
+            android:id="@+id/row_qemu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/row_bg">
+
+            <TextView
+                android:id="@+id/row_qemu_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_qemu"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_qemu_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_missing"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_bad" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/row_bg">
+
+            <TextView
+                android:id="@+id/row_image_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_guest_image"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_image_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_missing"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_bad" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_pagesize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/row_bg">
+
+            <TextView
+                android:id="@+id/row_pagesize_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_pagesize"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_pagesize_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_missing"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_bad" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_config"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/row_bg">
+
+            <TextView
+                android:id="@+id/row_config_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_config"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_config_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/config_text"
+                android:textSize="12sp"
+                android:textColor="@color/text_dark" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_vm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@color/row_bg">
+
+            <TextView
+                android:id="@+id/row_vm_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_vm_status"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_vm_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_stopped"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_bad" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button_start_vm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/button_start_vm"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/button_stop_vm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/button_stop_vm"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/button_guest_image_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/button_guest_image_info"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/button_download_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/button_download_image"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/row_download_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/download_not_started"
+            android:textSize="13sp"
+            android:textColor="@color/text_grey" />
+
+        <FrameLayout
+            android:id="@+id/vnc_container"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/vnc_bg">
+
+            <!-- Real VNC view (Phase 3): minimal RFB client, see
+                 VncView.kt. It draws its own status text until the
+                 first guest framebuffer arrives. -->
+            <com.nobiownvm.VncView
+                android:id="@+id/vnc_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+</ScrollView>
