@@ -70,6 +70,11 @@ class VmService : Service() {
         var isRunning: Boolean = false
             private set
 
+        /** Wall-clock time (ms) of the last successful QEMU start, v7 boot progress. */
+        @Volatile
+        var vmStartMs: Long = 0L
+            private set
+
         fun setWasRunning(context: Context, running: Boolean) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_WAS_RUNNING, running).apply()
@@ -172,6 +177,7 @@ class VmService : Service() {
             val process = builder.start()
             qemuProcess = process
             isRunning = true
+            vmStartMs = System.currentTimeMillis()
             vmState = STATE_RUNNING
             setWasRunning(this, true)
             updateNotification(STATE_RUNNING)
@@ -184,6 +190,7 @@ class VmService : Service() {
                     if (qemuProcess === process) {
                         qemuProcess = null
                         isRunning = false
+                        vmStartMs = 0L
                         vmState = STATE_STOPPED
                         setWasRunning(this@VmService, false)
                         updateNotification(STATE_STOPPED)
@@ -243,6 +250,7 @@ class VmService : Service() {
             // Best effort only.
         }
         isRunning = false
+        vmStartMs = 0L
         vmState = STATE_STOPPED
         super.onDestroy()
     }

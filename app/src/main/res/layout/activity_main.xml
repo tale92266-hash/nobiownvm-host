@@ -89,6 +89,16 @@
                 android:textColor="@color/status_bad" />
         </LinearLayout>
 
+        <!-- v7: boot-progress signal, inside the status area, refreshed every 5 s while Running -->
+        <TextView
+            android:id="@+id/row_boot_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Boot progress: VM not running"
+            android:textSize="13sp"
+            android:textColor="@color/text_grey" />
+
         <!-- (2) Guest screen, large and visible without scrolling past buttons -->
         <TextView
             android:layout_width="match_parent"

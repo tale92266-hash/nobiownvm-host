@@ -41,6 +41,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var qemuLogText: TextView
     private lateinit var bootLogText: TextView
     private lateinit var vncDiagText: TextView
+    private lateinit var bootProgressText: TextView
+    // v7 boot-progress sampling: previous serial.log size / last
+    // kernel timestamp, and the wall time of the last growth seen.
+    // Frozen verdict needs 10 min with NEITHER moving, so the
+    // growth clock starts at START, not at the first sample.
+    private var bootPrevBytes: Long = -1L
+    private var bootPrevKernelSec: Double = -1.0
+    private var bootLastGrowthMs: Long = 0L
     private lateinit var vncView: VncView
     private var vncConnected = false
     private var lastQemuLogText: String = ""
@@ -53,6 +61,7 @@ class MainActivity : AppCompatActivity() {
             if (::vncDiagText.isInitialized) {
                 vncDiagText.text = vncView.diagnostics()
             }
+            updateBootProgress()
             diagHandler.postDelayed(this, 5000)
         }
     }
@@ -70,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         qemuLogText = findViewById(R.id.qemu_log_text)
         bootLogText = findViewById(R.id.boot_log_text)
         vncDiagText = findViewById(R.id.row_vnc_diag)
+        bootProgressText = findViewById(R.id.row_boot_progress)
         vncView = findViewById(R.id.vnc_view)
 
         // Diagnosis only (v2): QEMU exit code 1 on Sam's phone left
@@ -146,6 +156,10 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             VmService.setWasRunning(this, true)
+            // v7: reset boot-progress sampling for this boot.
+            bootPrevBytes = -1L
+            bootPrevKernelSec = -1.0
+            bootLastGrowthMs = System.currentTimeMillis()
             val intent = Intent(this, VmService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ContextCompat.startForegroundService(this, intent)
@@ -262,6 +276,65 @@ class MainActivity : AppCompatActivity() {
             lastBootLogText = full
             runOnUiThread { bootLogText.text = full }
         }, "nobi-boot-log-read").start()
+    }
+
+    /**
+     * v7 boot-progress signal, refreshed every 5 s by diagRunnable
+     * while the activity is visible. Reads serial.log fresh on
+     * each sample (never a cached copy): size in bytes, last
+     * kernel timestamp "[  2.439...]" parsed from the log, wall
+     * time since START (VmService.vmStartMs), and a verdict:
+     * growing if bytes or kernel time increased since the last
+     * sample, frozen only if NEITHER moved for 10 min. The first
+     * sample is a baseline, not a growth claim. File I/O runs on
+     * a background thread; only the TextView update is on UI.
+     */
+    private fun updateBootProgress() {
+        if (!::bootProgressText.isInitialized) return
+        if (VmService.vmState != VmService.STATE_RUNNING) {
+            bootProgressText.text = "Boot progress: VM not running"
+            return
+        }
+        Thread({
+            val logFile = QemuManager.guestSerialLog(this)
+            val now = System.currentTimeMillis()
+            val result: String = if (!logFile.exists()) {
+                "Boot progress: serial.log not found yet"
+            } else {
+                try {
+                    val bytes = logFile.readBytes()
+                    val text = String(bytes, Charsets.UTF_8)
+                    // Kernel timestamps look like "[    1.000595][    T1]".
+                    val kernelSec = Regex("""\[\s*(\d+\.\d+)\]""")
+                        .findAll(text).lastOrNull()?.groupValues?.get(1)?.toDoubleOrNull() ?: -1.0
+                    val grew = bootPrevBytes < 0L ||
+                        bytes.size.toLong() > bootPrevBytes || kernelSec > bootPrevKernelSec
+                    val verdict: String = if (bootPrevBytes < 0L) {
+                        bootLastGrowthMs = now
+                        "Boot log: baseline taken, next sample will show growth"
+                    } else if (grew) {
+                        bootLastGrowthMs = now
+                        "Boot log growing - kernel time advancing (slow TCG, keep waiting)"
+                    } else if (bootLastGrowthMs > 0L && now - bootLastGrowthMs >= 10L * 60L * 1000L) {
+                        "Boot log frozen - no growth in 10 min (stuck, send log)"
+                    } else {
+                        "Boot log: no growth since last sample yet (under 10 min)"
+                    }
+                    bootPrevBytes = bytes.size.toLong()
+                    bootPrevKernelSec = kernelSec
+                    val startMs = VmService.vmStartMs
+                    val wallSec = if (startMs > 0L) (now - startMs) / 1000 else -1L
+                    val wall = if (wallSec < 0L) "unknown" else if (wallSec < 60L) "${wallSec}s" else "${wallSec / 60}m ${wallSec % 60}s"
+                    val kernel = if (kernelSec < 0.0) "none yet" else "%.2fs".format(kernelSec)
+                    "Boot: serial.log ${bytes.size} bytes | last kernel time $kernel | wall $wall since START | $verdict"
+                } catch (e: Exception) {
+                    "Boot progress: could not read serial.log: " + (e.message ?: e.javaClass.simpleName)
+                }
+            }
+            runOnUiThread {
+                if (::bootProgressText.isInitialized) bootProgressText.text = result
+            }
+        }, "nobi-boot-progress").start()
     }
 
     private fun refreshStatus() {

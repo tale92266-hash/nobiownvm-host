@@ -187,6 +187,25 @@ object QemuManager {
      * Serial output now goes to files/guest/serial.log (truncated
      * on each Start by VmService, like qemu.log) and MainActivity
      * has a SHOW BOOT LOG button for it.
+     *
+     * v7 BOOT FIX (2026-10-25, Sam approved "boot fix karke aage
+     * badho"): the v6 serial log proved the kernel reached init
+     * first stage and all three drives were detected (vda system,
+     * vdb userdata, vdc vendor), but the log stopped after the
+     * virtio-net enable with no init second stage / SurfaceFlinger
+     * output, and VNC stayed at 1 frame ("Display output is not
+     * active."). Safe, emulator-standard fixes only:
+     * - Kernel append gains qemu=1 (forces software rendering:
+     *   this guest has no goldfish pipe / virgl, so the emulator's
+     *   software renderer is the correct path), printk.devkmsg=on,
+     *   loop.max_part=7, androidboot.serialno, and
+     *   qemu.sf.lcd_density=320 (sane software-rendered density).
+     *   NO androidboot.android_dt_dir, NO root=, NO skip_initramfs.
+     * - virtio-rng-pci added after the net device (the emulator
+     *   always attaches RNG; cheap, helps first-boot key gen).
+     * - NO cache drive yet: that is only for the frozen case,
+     *   which Sam has not confirmed (slow TCG vs stuck is still
+     *   open). NO CPU/machine/RAM/GPU/drive/signing change.
      */
     fun buildCommand(context: Context): List<String>? {
         if (!isQemuPresent(context)) return null
@@ -200,7 +219,7 @@ object QemuManager {
             "-m", GUEST_RAM_MB.toString(),
             "-kernel", "$guest/kernel-ranchu",
             "-initrd", "$guest/ramdisk.img",
-            "-append", "console=ttyAMA0 androidboot.hardware=ranchu",
+            "-append", "console=ttyAMA0 androidboot.hardware=ranchu qemu=1 printk.devkmsg=on loop.max_part=7 androidboot.serialno=EMULATOR30X7X5X0 qemu.sf.lcd_density=320",
             "-drive", "file=$guest/system.img,format=raw,id=hd0,if=none,readonly=on",
             "-device", "virtio-blk-pci,drive=hd0,romfile=",
             "-drive", "file=$guest/userdata-16G.img,format=raw,id=hd1,if=none",
@@ -229,6 +248,9 @@ object QemuManager {
                 "-display", "vnc=127.0.0.1:0",
                 "-netdev", "user,id=net0",
                 "-device", "virtio-net-pci,netdev=net0,romfile=",
+                // v7: emulator always attaches an RNG device; helps
+                // first-boot key generation, costs almost nothing.
+                "-device", "virtio-rng-pci,romfile=",
                 // v6: serial console to a file (was "none", which hid
                 // all kernel boot progress). Truncated on each Start
                 // by VmService, like qemu.log. MainActivity's SHOW
