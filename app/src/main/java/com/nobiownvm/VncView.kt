@@ -53,6 +53,37 @@ class VncView @JvmOverloads constructor(
     var statusText: String = ""
         private set
 
+    // v6 diagnostics: the "Display output is not active." frame is a
+    // real framebuffer from QEMU, so a bitmap alone does not prove
+    // the guest reached graphics. Record frame size + last frame
+    // time so MainActivity can show "connected but no scanout"
+    // vs "not connected at all" distinctly.
+    @Volatile
+    var lastFrameWidth: Int = 0
+        private set
+
+    @Volatile
+    var lastFrameHeight: Int = 0
+        private set
+
+    @Volatile
+    var lastFrameAtMs: Long = 0L
+        private set
+
+    @Volatile
+    var frameCount: Long = 0L
+        private set
+
+    /** One-line diagnostic for the status area, never empty. */
+    fun diagnostics(): String {
+        val status = statusText
+        if (frameCount == 0L) {
+            return if (status.isEmpty()) "VNC: no frames yet" else status
+        }
+        val ageSec = (System.currentTimeMillis() - lastFrameAtMs) / 1000
+        return "VNC: ${lastFrameWidth}x$lastFrameHeight, $frameCount frames, last frame ${ageSec}s ago"
+    }
+
     private val lock = Any()
     private var bitmap: Bitmap? = null
     private var client: VncClient? = null
@@ -65,8 +96,16 @@ class VncView @JvmOverloads constructor(
     fun connect(host: String = "127.0.0.1", port: Int = 5900) {
         disconnect()
         statusText = context.getString(R.string.vnc_connecting)
+        lastFrameWidth = 0
+        lastFrameHeight = 0
+        lastFrameAtMs = 0L
+        frameCount = 0L
         val c = VncClient(host, port,
             onFrame = { bmp ->
+                lastFrameWidth = bmp.width
+                lastFrameHeight = bmp.height
+                lastFrameAtMs = System.currentTimeMillis()
+                frameCount++
                 synchronized(lock) {
                     bitmap?.recycle()
                     bitmap = bmp

@@ -154,6 +154,17 @@ class VmService : Service() {
             blocked("Could not create QEMU log file: ${e.message ?: e.javaClass.simpleName}")
             return START_NOT_STICKY
         }
+        // v6: truncate the guest serial console log too, so SHOW
+        // BOOT LOG shows this boot only, not a previous boot's tail.
+        // QEMU's -serial file: backend writes into this same file.
+        try {
+            val serialFile = QemuManager.guestSerialLog(this)
+            if (serialFile.exists()) serialFile.delete()
+            serialFile.parentFile?.mkdirs()
+            serialFile.createNewFile()
+        } catch (e: Exception) {
+            // Non-fatal: boot log may be empty, but QEMU can still run.
+        }
         try {
             val builder = ProcessBuilder(command)
                 .redirectOutput(logFile)

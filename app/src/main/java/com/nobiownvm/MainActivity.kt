@@ -39,9 +39,23 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusDot: android.view.View
     private lateinit var downloadStatus: TextView
     private lateinit var qemuLogText: TextView
+    private lateinit var bootLogText: TextView
+    private lateinit var vncDiagText: TextView
     private lateinit var vncView: VncView
     private var vncConnected = false
     private var lastQemuLogText: String = ""
+    private var lastBootLogText: String = ""
+    // v6: refresh the VNC diagnostic line every 5 s while visible,
+    // so frame size / last-frame age stays live during boot.
+    private val diagHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val diagRunnable = object : Runnable {
+        override fun run() {
+            if (::vncDiagText.isInitialized) {
+                vncDiagText.text = vncView.diagnostics()
+            }
+            diagHandler.postDelayed(this, 5000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +68,8 @@ class MainActivity : AppCompatActivity() {
         statusDot = findViewById(R.id.status_dot)
         downloadStatus = findViewById(R.id.row_download_status)
         qemuLogText = findViewById(R.id.qemu_log_text)
+        bootLogText = findViewById(R.id.boot_log_text)
+        vncDiagText = findViewById(R.id.row_vnc_diag)
         vncView = findViewById(R.id.vnc_view)
 
         // Diagnosis only (v2): QEMU exit code 1 on Sam's phone left
@@ -63,6 +79,26 @@ class MainActivity : AppCompatActivity() {
         // QEMU arguments are NOT changed in this build.
         findViewById<Button>(R.id.button_show_qemu_log).setOnClickListener {
             refreshQemuLog()
+        }
+
+        // v6: guest kernel serial console (files/guest/serial.log).
+        // Same pattern as the QEMU log: surfaces kernel boot
+        // progress instead of a black screen with no information.
+        findViewById<Button>(R.id.button_show_boot_log).setOnClickListener {
+            refreshBootLog()
+        }
+
+        findViewById<Button>(R.id.button_copy_boot_log).setOnClickListener {
+            if (lastBootLogText.isEmpty()) {
+                refreshBootLog()
+                if (lastBootLogText.isEmpty()) {
+                    Toast.makeText(this, R.string.boot_log_copy_empty, Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+            }
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Boot log", lastBootLogText))
+            Toast.makeText(this, R.string.boot_log_copied, Toast.LENGTH_SHORT).show()
         }
 
         findViewById<Button>(R.id.button_copy_qemu_log).setOnClickListener {
@@ -151,6 +187,12 @@ class MainActivity : AppCompatActivity() {
             vncConnected = true
         }
         refreshStatus()
+        diagHandler.post(diagRunnable)
+    }
+
+    override fun onPause() {
+        diagHandler.removeCallbacks(diagRunnable)
+        super.onPause()
     }
 
     override fun onDestroy() {
@@ -194,7 +236,36 @@ class MainActivity : AppCompatActivity() {
         }, "nobi-qemu-log-read").start()
     }
 
+    private fun refreshBootLog() {
+        bootLogText.text = getString(R.string.boot_log_empty)
+        Thread({
+            val logFile = QemuManager.guestSerialLog(this)
+            val header = StringBuilder()
+            header.append("VM state: ").append(VmService.vmState).append("\n")
+            header.append("VNC: ").append(vncView.diagnostics()).append("\n")
+            val body: String = if (!logFile.exists()) {
+                getString(R.string.boot_log_empty)
+            } else {
+                try {
+                    val bytes = logFile.readBytes()
+                    var text = String(bytes, Charsets.UTF_8)
+                    if (text.length > 12000) {
+                        text = "... (showing last 12000 chars of " + bytes.size + " bytes)\n" +
+                            text.substring(text.length - 12000)
+                    }
+                    "Log file: " + logFile.absolutePath + " (" + bytes.size + " bytes)\n\n" + text
+                } catch (e: Exception) {
+                    "Could not read boot log: " + (e.message ?: e.javaClass.simpleName)
+                }
+            }
+            val full = header.toString() + "\n" + body
+            lastBootLogText = full
+            runOnUiThread { bootLogText.text = full }
+        }, "nobi-boot-log-read").start()
+    }
+
     private fun refreshStatus() {
+        vncDiagText.text = vncView.diagnostics()
         val qemuOk = QemuManager.isQemuPresent(this)
         setStatus(
             qemuStatus,

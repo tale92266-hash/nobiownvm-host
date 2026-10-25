@@ -43,4 +43,11 @@
     <string name="qemu_log_empty">No QEMU log yet - start the VM first.</string>
     <string name="qemu_log_copied">QEMU log copied to clipboard.</string>
     <string name="qemu_log_copy_empty">No QEMU log to copy yet.</string>
+    <string name="section_boot_log">Boot log (guest kernel)</string>
+    <string name="button_show_boot_log">Show boot log</string>
+    <string name="button_copy_boot_log">Copy boot log</string>
+    <string name="boot_log_empty">No boot log yet - start the VM first.</string>
+    <string name="boot_log_copied">Boot log copied to clipboard.</string>
+    <string name="boot_log_copy_empty">No boot log to copy yet.</string>
+    <string name="vnc_diag_default">VNC: not connected yet.</string>
 </resources>

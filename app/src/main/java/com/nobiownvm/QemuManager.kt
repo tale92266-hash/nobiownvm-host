@@ -69,10 +69,14 @@ object QemuManager {
     fun guestKernel(context: Context): File = File(guestDir(context), "kernel-ranchu")
     fun guestRamdisk(context: Context): File = File(guestDir(context), "ramdisk.img")
     fun guestSystem(context: Context): File = File(guestDir(context), "system.img")
+    fun guestVendor(context: Context): File = File(guestDir(context), "vendor.img")
     fun guestUserdata(context: Context): File = File(guestDir(context), "userdata-16G.img")
 
     /** QEMU stdout/stderr log (truncated on each Start VM). */
     fun guestLog(context: Context): File = File(guestDir(context), "qemu.log")
+
+    /** Guest kernel serial console log (truncated on each Start VM). */
+    fun guestSerialLog(context: Context): File = File(guestDir(context), "serial.log")
 
     /**
      * Create the 16 GB userdata disk on first boot only.
@@ -162,25 +166,33 @@ object QemuManager {
      * VmService also refuses a second QEMU process while one is
      * alive, so a double-Start tap cannot create this lock clash.
      *
-     * KNOWN GAP (found in Phase 3 by listing the verified zip):
-     * the API 34 image also ships vendor.img (100 MB) and
-     * encryptionkey.img, which this command does NOT attach.
-     * The Android emulator normally supplies a vendor partition;
-     * if the guest fails to mount /vendor or fails encryption
-     * setup, attaching vendor.img as an additional virtio drive
-     * (drive order to be determined from the failure, NOT guessed
-     * blindly) is the first fix to try. vendor.img is already
-     * extracted by GuestImageManager so no re-download is needed.
-     * Likewise, userdata is a fresh 16 GB sparse file here, not
-     * the zip's 1 MB userdata.img template — if the guest cannot
-     * mount/format /data on first boot, that template is the
-     * fallback to investigate. Both are UNTESTED until the boot test.
+     * v6 FIX (2026-10-25, from Sam's on-device screenshot):
+     * QEMU was Running and VNC was receiving frames, but the
+     * framebuffer showed QEMU's own "Display output is not
+     * active." text — the guest GPU had no scanout, i.e. the
+     * guest had not reached graphics/SurfaceFlinger. The most
+     * likely blocker was the Phase 3 known gap: vendor.img was
+     * extracted by GuestImageManager but never attached, so
+     * Android init could not mount /vendor before graphics.
+     * vendor.img is now attached as a READONLY virtio-blk drive
+     * (hd2, after system hd0 and userdata hd1), so the guest
+     * sees system=vda, userdata=vdb, vendor=vdc in PCI order.
+     * encryptionkey.img is still unused. Likewise, userdata is
+     * a fresh 16 GB sparse file here, not the zip's 1 MB
+     * userdata.img template — if the guest cannot mount/format
+     * /data on first boot, that template is the fallback.
+     *
+     * v6 VISIBILITY (same screenshot): the guest screen gave no
+     * clue where boot was stuck, because serial was "none".
+     * Serial output now goes to files/guest/serial.log (truncated
+     * on each Start by VmService, like qemu.log) and MainActivity
+     * has a SHOW BOOT LOG button for it.
      */
     fun buildCommand(context: Context): List<String>? {
         if (!isQemuPresent(context)) return null
         if (!isGuestImagePresent(context)) return null
         val guest = guestDir(context).absolutePath
-        return listOf(
+        val cmd = mutableListOf(
             qemuBinaryFile(context).absolutePath,
             "-machine", "virt,accel=tcg",
             "-cpu", GUEST_CPU,
@@ -192,18 +204,39 @@ object QemuManager {
             "-drive", "file=$guest/system.img,format=raw,id=hd0,if=none,readonly=on",
             "-device", "virtio-blk-pci,drive=hd0,romfile=",
             "-drive", "file=$guest/userdata-16G.img,format=raw,id=hd1,if=none",
-            "-device", "virtio-blk-pci,drive=hd1,romfile=",
-            "-device", "virtio-gpu-pci,romfile=",
-            // Data dir for keymaps (copied from assets by ensureQemuShare):
-            // without -L, VNC fails with "could not read keymap file: 'en-us'".
-            "-L", qemuShareDir(context).absolutePath,
-            // Bind VNC to loopback only: the guest screen must be
-            // viewable from this app, never from the network.
-            "-display", "vnc=127.0.0.1:0",
-            "-netdev", "user,id=net0",
-            "-device", "virtio-net-pci,netdev=net0,romfile=",
-            "-serial", "none",
-            "-monitor", "none"
+            "-device", "virtio-blk-pci,drive=hd1,romfile="
         )
+        // v6: vendor partition, READONLY like system. It must be
+        // present for Android init to mount /vendor; without it
+        // the guest never reaches graphics and VNC shows
+        // "Display output is not active." Only attach if the
+        // file exists — an older download without vendor.img still
+        // boots rather than failing on a missing drive file.
+        if (guestVendor(context).exists()) {
+            cmd.add("-drive")
+            cmd.add("file=$guest/vendor.img,format=raw,id=hd2,if=none,readonly=on")
+            cmd.add("-device")
+            cmd.add("virtio-blk-pci,drive=hd2,romfile=")
+        }
+        cmd.addAll(
+            listOf(
+                "-device", "virtio-gpu-pci,romfile=",
+                // Data dir for keymaps (copied from assets by ensureQemuShare):
+                // without -L, VNC fails with "could not read keymap file: 'en-us'".
+                "-L", qemuShareDir(context).absolutePath,
+                // Bind VNC to loopback only: the guest screen must be
+                // viewable from this app, never from the network.
+                "-display", "vnc=127.0.0.1:0",
+                "-netdev", "user,id=net0",
+                "-device", "virtio-net-pci,netdev=net0,romfile=",
+                // v6: serial console to a file (was "none", which hid
+                // all kernel boot progress). Truncated on each Start
+                // by VmService, like qemu.log. MainActivity's SHOW
+                // BOOT LOG button reads this file.
+                "-serial", "file:${guestDir(context).absolutePath}/serial.log",
+                "-monitor", "none"
+            )
+        )
+        return cmd
     }
 }

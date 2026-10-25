@@ -112,6 +112,18 @@
                 android:layout_height="match_parent" />
         </FrameLayout>
 
+        <!-- v6: VNC diagnostics — framebuffer size + last frame time,
+             so "connected but guest has no scanout yet" is visible
+             even when the frame itself only says "not active". -->
+        <TextView
+            android:id="@+id/row_vnc_diag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/vnc_diag_default"
+            android:textSize="13sp"
+            android:textColor="@color/text_grey" />
+
         <!-- (3) Controls: Start (primary) / Stop (secondary), with icons -->
         <TextView
             android:layout_width="match_parent"
@@ -355,6 +367,53 @@
                 android:layout_height="wrap_content"
                 android:padding="12dp"
                 android:text="@string/qemu_log_empty"
+                android:textSize="11sp"
+                android:typeface="monospace"
+                android:textColor="#FFFFFF" />
+        </ScrollView>
+
+        <!-- (6) Boot log section (v6): guest kernel serial console -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/section_boot_log"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
+
+        <Button
+            android:id="@+id/button_show_boot_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/nobi_violet_dark"
+            android:drawableStart="@drawable/ic_log"
+            android:drawablePadding="8dp"
+            android:text="@string/button_show_boot_log"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/button_copy_boot_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/button_copy_boot_log"
+            android:textSize="15sp" />
+
+        <ScrollView
+            android:id="@+id/boot_log_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="240dp"
+            android:layout_marginTop="12dp"
+            android:background="#111111">
+
+            <TextView
+                android:id="@+id/boot_log_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:text="@string/boot_log_empty"
                 android:textSize="11sp"
                 android:typeface="monospace"
                 android:textColor="#FFFFFF" />
