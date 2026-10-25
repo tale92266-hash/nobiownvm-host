@@ -96,6 +96,24 @@ class VmService : Service() {
             blocked("Could not start foreground service: ${e.message ?: e.javaClass.simpleName}")
             return START_NOT_STICKY
         }
+        // v5 single-instance guard: if a QEMU process is already
+        // alive, do NOT start a second one — a second process would
+        // fail with "Failed to get write lock" on the image files
+        // (Sam's on-device qemu.log, 170 bytes) and would truncate
+        // the first process's log. Just report the existing run.
+        val existing = qemuProcess
+        if (existing != null && existing.isAlive) {
+            vmState = STATE_RUNNING
+            isRunning = true
+            setWasRunning(this, true)
+            updateNotification(STATE_RUNNING)
+            return START_STICKY
+        }
+        if (existing != null) {
+            // Stale reference to a dead process: drop it so the
+            // fresh start below cannot be mistaken for a duplicate.
+            qemuProcess = null
+        }
         vmState = STATE_STARTING
         lastStartError = null
         lastExitCode = null

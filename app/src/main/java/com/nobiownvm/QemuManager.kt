@@ -150,6 +150,18 @@ object QemuManager {
      * -device virtio-blk-pci so romfile= can be set on them too.
      * Do NOT reintroduce if=virtio shorthand drives.
      *
+     * v5 FIX (2026-10-25, from Sam's on-device qemu.log, 170 bytes):
+     * "-device virtio-blk-pci,drive=hd0,romfile=: Failed to get
+     * write lock. Is another process using the image
+     * [.../guest/system.img]?" — QEMU opens drives read-write by
+     * default and takes an exclusive write lock. The guest system
+     * partition must be read-only anyway (as in the Android
+     * emulator): the guest never writes it, userdata is the
+     * writable drive. So system.img is attached with readonly=on.
+     * userdata-16G.img stays read-write — do NOT make it readonly.
+     * VmService also refuses a second QEMU process while one is
+     * alive, so a double-Start tap cannot create this lock clash.
+     *
      * KNOWN GAP (found in Phase 3 by listing the verified zip):
      * the API 34 image also ships vendor.img (100 MB) and
      * encryptionkey.img, which this command does NOT attach.
@@ -177,7 +189,7 @@ object QemuManager {
             "-kernel", "$guest/kernel-ranchu",
             "-initrd", "$guest/ramdisk.img",
             "-append", "console=ttyAMA0 androidboot.hardware=ranchu",
-            "-drive", "file=$guest/system.img,format=raw,id=hd0,if=none",
+            "-drive", "file=$guest/system.img,format=raw,id=hd0,if=none,readonly=on",
             "-device", "virtio-blk-pci,drive=hd0,romfile=",
             "-drive", "file=$guest/userdata-16G.img,format=raw,id=hd1,if=none",
             "-device", "virtio-blk-pci,drive=hd1,romfile=",
