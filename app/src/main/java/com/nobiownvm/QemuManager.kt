@@ -40,6 +40,32 @@ object QemuManager {
         return File(context.filesDir, "guest")
     }
 
+    /** QEMU data dir (keymaps etc.) in private storage, copied from assets. */
+    fun qemuShareDir(context: Context): File {
+        return File(context.filesDir, "qemu-share")
+    }
+
+    /**
+     * Copy the real QEMU en-us keymap from assets to private storage.
+     * Needed because the minimal QEMU build ships no datadir: without
+     * it, VNC fails with "could not read keymap file: 'en-us'".
+     * Returns false only if the copy itself fails.
+     */
+    fun ensureQemuShare(context: Context): Boolean {
+        return try {
+            val dest = File(qemuShareDir(context), "keymaps/en-us")
+            if (!dest.exists()) {
+                dest.parentFile?.mkdirs()
+                context.assets.open("qemu-share/keymaps/en-us").use { input ->
+                    dest.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            dest.exists()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun guestKernel(context: Context): File = File(guestDir(context), "kernel-ranchu")
     fun guestRamdisk(context: Context): File = File(guestDir(context), "ramdisk.img")
     fun guestSystem(context: Context): File = File(guestDir(context), "system.img")
@@ -156,6 +182,9 @@ object QemuManager {
             "-drive", "file=$guest/userdata-16G.img,format=raw,id=hd1,if=none",
             "-device", "virtio-blk-pci,drive=hd1,romfile=",
             "-device", "virtio-gpu-pci,romfile=",
+            // Data dir for keymaps (copied from assets by ensureQemuShare):
+            // without -L, VNC fails with "could not read keymap file: 'en-us'".
+            "-L", qemuShareDir(context).absolutePath,
             // Bind VNC to loopback only: the guest screen must be
             // viewable from this app, never from the network.
             "-display", "vnc=127.0.0.1:0",

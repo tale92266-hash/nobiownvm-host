@@ -113,6 +113,13 @@ class VmService : Service() {
             )
             return START_NOT_STICKY
         }
+        if (!QemuManager.ensureQemuShare(this)) {
+            blocked(
+                "QEMU share data (keymaps) could not be copied from assets. " +
+                    "Reinstall the app and try again."
+            )
+            return START_NOT_STICKY
+        }
         if (!QemuManager.ensureUserdata(this)) {
             blocked(
                 "Userdata disk could not be created: need at least 20 GB free " +
