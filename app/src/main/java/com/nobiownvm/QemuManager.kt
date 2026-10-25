@@ -117,7 +117,7 @@ object QemuManager {
      * "-device virtio-net-pci,netdev=net0: failed to find romfile
      * efi-virtio.rom" — QEMU's virtio PCI devices try to load an
      * option ROM from QEMU's datadir, which the minimal build does
-     * NOT ship (no share/qemu/*.rom in the APK), so the device
+     * NOT ship (no QEMU ROM files in the APK), so the device
      * fails before the guest boots (exit code 1). Every virtio
      * PCI device below therefore sets romfile= (empty) to disable
      * ROM loading. Block devices use explicit -drive id=...+
