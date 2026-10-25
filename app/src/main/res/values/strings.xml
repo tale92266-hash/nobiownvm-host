@@ -33,4 +33,9 @@
     <string name="notification_vm_text">The guest VM process is owned by this service.</string>
     <string name="toast_vm_blocked">VM cannot start: QEMU binary or guest image is missing. See the blocker note.</string>
     <string name="toast_vm_started">VM service started. Guest screen appears in the VNC view once QEMU boots.</string>
+    <string name="button_show_qemu_log">Show QEMU log</string>
+    <string name="button_copy_qemu_log">Copy QEMU log</string>
+    <string name="qemu_log_empty">No QEMU log yet - start the VM first.</string>
+    <string name="qemu_log_copied">QEMU log copied to clipboard.</string>
+    <string name="qemu_log_copy_empty">No QEMU log to copy yet.</string>
 </resources>

@@ -1,6 +1,9 @@
 package com.nobiownvm
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -34,8 +37,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pagesizeStatus: TextView
     private lateinit var vmStatus: TextView
     private lateinit var downloadStatus: TextView
+    private lateinit var qemuLogText: TextView
     private lateinit var vncView: VncView
     private var vncConnected = false
+    private var lastQemuLogText: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +51,30 @@ class MainActivity : AppCompatActivity() {
         pagesizeStatus = findViewById(R.id.row_pagesize_status)
         vmStatus = findViewById(R.id.row_vm_status)
         downloadStatus = findViewById(R.id.row_download_status)
+        qemuLogText = findViewById(R.id.qemu_log_text)
         vncView = findViewById(R.id.vnc_view)
+
+        // Diagnosis only (v2): QEMU exit code 1 on Sam's phone left
+        // no visible error. qemu.log already holds QEMU stdout/stderr
+        // (VmService redirects there); this button surfaces it so
+        // the exact failure line can be reported instead of guessed.
+        // QEMU arguments are NOT changed in this build.
+        findViewById<Button>(R.id.button_show_qemu_log).setOnClickListener {
+            refreshQemuLog()
+        }
+
+        findViewById<Button>(R.id.button_copy_qemu_log).setOnClickListener {
+            if (lastQemuLogText.isEmpty()) {
+                refreshQemuLog()
+                if (lastQemuLogText.isEmpty()) {
+                    Toast.makeText(this, R.string.qemu_log_copy_empty, Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+            }
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("QEMU log", lastQemuLogText))
+            Toast.makeText(this, R.string.qemu_log_copied, Toast.LENGTH_SHORT).show()
+        }
 
         findViewById<Button>(R.id.button_download_image).setOnClickListener {
             if (QemuManager.isGuestImagePresent(this)) {
@@ -132,6 +160,36 @@ class MainActivity : AppCompatActivity() {
         view.text = text
         val color = if (good) R.color.status_good else R.color.status_bad
         view.setTextColor(ContextCompat.getColor(this, color))
+    }
+
+    private fun refreshQemuLog() {
+        qemuLogText.text = getString(R.string.qemu_log_empty)
+        Thread({
+            val logFile = QemuManager.guestLog(this)
+            val header = StringBuilder()
+            header.append("VM state: ").append(VmService.vmState).append("\n")
+            VmService.lastExitCode?.let { header.append("QEMU exit code: ").append(it).append("\n") }
+            VmService.lastStartError?.let { header.append("Start error: ").append(it).append("\n") }
+            VmService.lastBlockReason?.let { header.append("Block reason: ").append(it).append("\n") }
+            val body: String = if (!logFile.exists()) {
+                getString(R.string.qemu_log_empty)
+            } else {
+                try {
+                    val bytes = logFile.readBytes()
+                    var text = String(bytes, Charsets.UTF_8)
+                    if (text.length > 12000) {
+                        text = "... (showing last 12000 chars of " + bytes.size + " bytes)\n" +
+                            text.substring(text.length - 12000)
+                    }
+                    "Log file: " + logFile.absolutePath + " (" + bytes.size + " bytes)\n\n" + text
+                } catch (e: Exception) {
+                    "Could not read QEMU log: " + (e.message ?: e.javaClass.simpleName)
+                }
+            }
+            val full = header.toString() + "\n" + body
+            lastQemuLogText = full
+            runOnUiThread { qemuLogText.text = full }
+        }, "nobi-qemu-log-read").start()
     }
 
     private fun refreshStatus() {
