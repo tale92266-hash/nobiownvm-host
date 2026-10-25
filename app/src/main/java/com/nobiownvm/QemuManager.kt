@@ -113,6 +113,17 @@ object QemuManager {
      * or the guest image is missing - the caller must NOT try to run
      * a partial command.
      *
+     * v3 FIX (2026-10-25, from Sam's on-device qemu.log, 88 bytes):
+     * "-device virtio-net-pci,netdev=net0: failed to find romfile
+     * efi-virtio.rom" — QEMU's virtio PCI devices try to load an
+     * option ROM from QEMU's datadir, which the minimal build does
+     * NOT ship (no share/qemu/*.rom in the APK), so the device
+     * fails before the guest boots (exit code 1). Every virtio
+     * PCI device below therefore sets romfile= (empty) to disable
+     * ROM loading. Block devices use explicit -drive id=...+
+     * -device virtio-blk-pci so romfile= can be set on them too.
+     * Do NOT reintroduce if=virtio shorthand drives.
+     *
      * KNOWN GAP (found in Phase 3 by listing the verified zip):
      * the API 34 image also ships vendor.img (100 MB) and
      * encryptionkey.img, which this command does NOT attach.
@@ -140,14 +151,16 @@ object QemuManager {
             "-kernel", "$guest/kernel-ranchu",
             "-initrd", "$guest/ramdisk.img",
             "-append", "console=ttyAMA0 androidboot.hardware=ranchu",
-            "-drive", "file=$guest/system.img,format=raw,if=virtio",
-            "-drive", "file=$guest/userdata-16G.img,format=raw,if=virtio",
-            "-device", "virtio-gpu-pci",
+            "-drive", "file=$guest/system.img,format=raw,id=hd0,if=none",
+            "-device", "virtio-blk-pci,drive=hd0,romfile=",
+            "-drive", "file=$guest/userdata-16G.img,format=raw,id=hd1,if=none",
+            "-device", "virtio-blk-pci,drive=hd1,romfile=",
+            "-device", "virtio-gpu-pci,romfile=",
             // Bind VNC to loopback only: the guest screen must be
             // viewable from this app, never from the network.
             "-display", "vnc=127.0.0.1:0",
             "-netdev", "user,id=net0",
-            "-device", "virtio-net-pci,netdev=net0",
+            "-device", "virtio-net-pci,netdev=net0,romfile=",
             "-serial", "none",
             "-monitor", "none"
         )
