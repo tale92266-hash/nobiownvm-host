@@ -72,6 +72,160 @@ object QemuManager {
     fun guestVendor(context: Context): File = File(guestDir(context), "vendor.img")
     fun guestUserdata(context: Context): File = File(guestDir(context), "userdata-16G.img")
 
+    /**
+     * The /metadata disk, in preference order:
+     * 1. encryptionkey.img from the SDK zip — despite its name, its GPT
+     *    contains exactly one partition, named "metadata" (16 MiB ext4,
+     *    essentially empty: only lost+found — verified by parsing the
+     *    rev14 zip's GPT on 2026-10-25). This is the file the Android
+     *    Emulator attaches as the metadata/encryption-key disk.
+     * 2. metadata.img, created locally by ensureMetadataDisk() for
+     *    installs that extracted the guest image before v8 (those
+     *    never extracted encryptionkey.img, and the zip is deleted
+     *    after extraction, so re-downloading 1.6 GB just for this
+     *    18 MB disk would be wasteful). It is a GPT disk with the
+     *    same geometry as encryptionkey.img and one partition named
+     *    "metadata"; the fstab entry is marked formattable, so init
+     *    formats it as ext4 if it is not already formatted.
+     * The disk MUST be read-write: /metadata is mounted rw and
+     * vold writes encryption keys into it. Never attach it readonly.
+     */
+    fun guestEncryptionKey(context: Context): File = File(guestDir(context), "encryptionkey.img")
+    fun guestMetadataLocal(context: Context): File = File(guestDir(context), "metadata.img")
+    fun guestMetadataDisk(context: Context): File {
+        val real = guestEncryptionKey(context)
+        return if (real.exists()) real else guestMetadataLocal(context)
+    }
+
+    /** Total size of the metadata GPT disk, matching encryptionkey.img. */
+    const val METADATA_DISK_BYTES = 18874368L
+
+    /**
+     * Create files/guest/metadata.img (GPT disk, one partition named
+     * "metadata") if neither encryptionkey.img nor metadata.img is
+     * present. Returns false only if creation fails — callers must
+     * then stay BLOCKED, because without a metadata partition init
+     * first stage waits forever (Sam's v7 serial log, 2026-10-25).
+     * Pure byte writing + CRC32; no mkfs tool is needed, because
+     * the partition is left zeroed and the fstab entry is
+     * formattable, so init formats it on first mount.
+     */
+    fun ensureMetadataDisk(context: Context): Boolean {
+        if (guestEncryptionKey(context).exists()) return true
+        val file = guestMetadataLocal(context)
+        if (file.exists()) {
+            if (file.length() == METADATA_DISK_BYTES) return true
+            // Partial/corrupt local disk: drop it and recreate below.
+            try {
+                file.delete()
+            } catch (ignored: Exception) {
+            }
+        }
+        return try {
+            val totalSectors = (METADATA_DISK_BYTES / 512L)
+            val array = ByteArray(128 * 128)
+            // Partition entry 0: Linux filesystem type GUID, first
+            // LBA 2048, last LBA 34815, name "metadata" (UTF-16LE).
+            val typeGuid = guidBytesLe(java.util.UUID.fromString("0fc63daf-8483-4772-8e79-3d69d8477de4"))
+            val uniqGuid = guidBytesLe(java.util.UUID.randomUUID())
+            typeGuid.copyInto(array, 0)
+            uniqGuid.copyInto(array, 16)
+            putLongLe(array, 32, 2048L)
+            putLongLe(array, 40, 34815L)
+            putLongLe(array, 48, 0L)
+            val nameBytes = "metadata".toByteArray(Charsets.UTF_16LE)
+            nameBytes.copyInto(array, 56)
+            val arrayCrc = crc32(array)
+            val diskGuid = guidBytesLe(java.util.UUID.randomUUID())
+            java.io.RandomAccessFile(file, "rw").use { raf ->
+                raf.setLength(METADATA_DISK_BYTES)
+                // Protective MBR (same layout as encryptionkey.img).
+                val mbr = ByteArray(512)
+                val entry = byteArrayOf(
+                    0x00, 0x00, 0x02, 0x00, 0xEE.toByte(), 0x4B, 0x09, 0x02,
+                    0x01, 0x00, 0x00, 0x00, 0xFF.toByte(), 0x8F.toByte(), 0x00, 0x00
+                )
+                entry.copyInto(mbr, 446)
+                mbr[510] = 0x55
+                mbr[511] = 0xAA.toByte()
+                raf.seek(0)
+                raf.write(mbr)
+                // Primary GPT header + array.
+                raf.seek(512)
+                raf.write(gptHeader(diskGuid, 1L, totalSectors - 1, 2L, arrayCrc))
+                raf.seek(1024)
+                raf.write(array)
+                // Backup array + header (last 33 sectors).
+                raf.seek((totalSectors - 33) * 512)
+                raf.write(array)
+                raf.seek((totalSectors - 1) * 512)
+                raf.write(gptHeader(diskGuid, totalSectors - 1, 1L, totalSectors - 33, arrayCrc))
+            }
+            file.length() == METADATA_DISK_BYTES
+        } catch (e: Exception) {
+            try {
+                file.delete()
+            } catch (ignored: Exception) {
+            }
+            false
+        }
+    }
+
+    private fun crc32(bytes: ByteArray): Long {
+        val crc = java.util.zip.CRC32()
+        crc.update(bytes)
+        return crc.value
+    }
+
+    private fun putIntLe(buf: ByteArray, off: Int, v: Int) {
+        buf[off] = (v and 0xFF).toByte()
+        buf[off + 1] = ((v ushr 8) and 0xFF).toByte()
+        buf[off + 2] = ((v ushr 16) and 0xFF).toByte()
+        buf[off + 3] = ((v ushr 24) and 0xFF).toByte()
+    }
+
+    private fun putLongLe(buf: ByteArray, off: Int, v: Long) {
+        for (i in 0 until 8) buf[off + i] = ((v ushr (8 * i)) and 0xFF).toByte()
+    }
+
+    private fun guidBytesLe(uuid: java.util.UUID): ByteArray {
+        val msb = uuid.mostSignificantBits
+        val lsb = uuid.leastSignificantBits
+        val out = ByteArray(16)
+        putIntLe(out, 0, (msb ushr 32).toInt())
+        out[4] = ((msb ushr 16) and 0xFF).toByte()
+        out[5] = ((msb ushr 24) and 0xFF).toByte()
+        out[6] = (msb and 0xFF).toByte()
+        out[7] = ((msb ushr 8) and 0xFF).toByte()
+        for (i in 0 until 8) out[8 + i] = ((lsb ushr (8 * (7 - i))) and 0xFF).toByte()
+        return out
+    }
+
+    private fun gptHeader(
+        diskGuid: ByteArray,
+        myLba: Long,
+        altLba: Long,
+        partLba: Long,
+        arrayCrc: Long
+    ): ByteArray {
+        val h = ByteArray(92)
+        "EFI PART".toByteArray(Charsets.US_ASCII).copyInto(h, 0)
+        putIntLe(h, 8, 0x00010000)
+        putIntLe(h, 12, 92)
+        // CRC field (offset 16) stays 0 while computing the CRC.
+        putLongLe(h, 24, myLba)
+        putLongLe(h, 32, altLba)
+        putLongLe(h, 40, 34L)
+        putLongLe(h, 48, 36864L - 34L)
+        diskGuid.copyInto(h, 56)
+        putLongLe(h, 72, partLba)
+        putIntLe(h, 80, 128)
+        putIntLe(h, 84, 128)
+        putIntLe(h, 88, arrayCrc.toInt())
+        putIntLe(h, 16, crc32(h).toInt())
+        return h
+    }
+
     /** QEMU stdout/stderr log (truncated on each Start VM). */
     fun guestLog(context: Context): File = File(guestDir(context), "qemu.log")
 
@@ -177,7 +331,9 @@ object QemuManager {
      * vendor.img is now attached as a READONLY virtio-blk drive
      * (hd2, after system hd0 and userdata hd1), so the guest
      * sees system=vda, userdata=vdb, vendor=vdc in PCI order.
-     * encryptionkey.img is still unused. Likewise, userdata is
+     * (v8 supersedes the old "encryptionkey.img unused" note:
+     * it is the metadata disk, now attached — see v8 FIX below.)
+     * Likewise, userdata is
      * a fresh 16 GB sparse file here, not the zip's 1 MB
      * userdata.img template — if the guest cannot mount/format
      * /data on first boot, that template is the fallback.
@@ -206,6 +362,35 @@ object QemuManager {
      * - NO cache drive yet: that is only for the frozen case,
      *   which Sam has not confirmed (slow TCG vs stuck is still
      *   open). NO CPU/machine/RAM/GPU/drive/signing change.
+     *
+     * v8 FIX (2026-10-25, from Sam's v7 serial log, 397,980 bytes):
+     * the log advanced past the v6 stall point (kernel time to
+     * ~14 s, serial.log growing) and then stopped at:
+     *   init: [libfs_mgr] ReadFstabFromDt(): failed to read fstab from dt
+     *   init: Using Android DT directory /proc/device-tree/firmware/android/
+     *   init: Failed to read vbmeta partitions.
+     *   init: BlockDevInitializer::InitDevices: partition(s) not
+     *     found in /sys, waiting for their uevent(s): metadata
+     * Inspection of the verified rev14 zip's GPT tables proves the
+     * cause (no guessing): system.img GPT = vbmeta (vda1) + super
+     * (vda2); vendor.img GPT = vendor (vdc1); and encryptionkey.img
+     * GPT = exactly one partition, named "metadata" (16 MiB ext4,
+     * essentially empty). No other file in the zip provides a
+     * metadata partition — and QemuManager never attached
+     * encryptionkey.img, so init first stage waits for it forever
+     * and SurfaceFlinger never starts (VNC stays at 1 frame).
+     * Fix: attach the metadata disk as the 6th PCI device, i.e.
+     * AFTER the net device and BEFORE the RNG device, so it gets
+     * PCI slot 06.0 — the exact path ranchu fstab expects:
+     * /dev/block/pci/pci0000:00/0000:00:06.0/by-name/metadata
+     * (Sam's own v7 log proves QEMU assigns PCI slots in command
+     * order: blk 01, blk 02, blk 03, gpu 04, net 05, rng 06).
+     * The RNG device therefore moves to slot 07; it has no fstab
+     * entry, so its slot is irrelevant. The metadata disk is
+     * READ-WRITE (never readonly). NO cache drive is added in
+     * this build: the log waits only for metadata, and /data is
+     * latemount (not first-stage), so adding cache too would
+     * change two variables at once and hide which fix worked.
      */
     fun buildCommand(context: Context): List<String>? {
         if (!isQemuPresent(context)) return null
@@ -248,8 +433,21 @@ object QemuManager {
                 "-display", "vnc=127.0.0.1:0",
                 "-netdev", "user,id=net0",
                 "-device", "virtio-net-pci,netdev=net0,romfile=",
+                // v8: metadata disk, READ-WRITE, as the 6th PCI device
+                // (slot 06.0 — see the v8 FIX comment above). VmService
+                // calls ensureMetadataDisk() before launching, so the
+                // file exists here for both fresh installs (real
+                // encryptionkey.img) and older installs (local
+                // metadata.img GPT disk): VmService calls
+                // ensureMetadataDisk() and blocks before launching
+                // if it fails, so a launch never silently boots
+                // without /metadata again.
+                "-drive", "file=${guestMetadataDisk(context).absolutePath},format=raw,id=hd3,if=none",
+                "-device", "virtio-blk-pci,drive=hd3,romfile=",
                 // v7: emulator always attaches an RNG device; helps
                 // first-boot key generation, costs almost nothing.
+                // Now 7th PCI device (slot 07.0) after the metadata
+                // disk took slot 06.0; its slot does not matter.
                 "-device", "virtio-rng-pci,romfile=",
                 // v6: serial console to a file (was "none", which hid
                 // all kernel boot progress). Truncated on each Start

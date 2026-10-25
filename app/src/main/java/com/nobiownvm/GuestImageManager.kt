@@ -63,11 +63,14 @@ object GuestImageManager {
     const val USERDATA_SIZE_BYTES = 16L * 1024L * 1024L * 1024L
 
     // vendor.img is extracted too (it exists in the verified zip),
-    // even though QemuManager does not attach it as a drive yet —
-    // see the known-gap note in QemuManager.kt. Extracting it now
-    // means the boot-test fix (if /vendor fails to mount) does
-    // not need another 1.6 GB download.
-    private val WANTED_FILES = setOf("kernel-ranchu", "ramdisk.img", "system.img", "vendor.img")
+    // and since v8 so is encryptionkey.img: despite its name, its
+    // GPT contains exactly one partition, named "metadata", and
+    // QemuManager attaches it as the /metadata disk — without it,
+    // init first stage waits forever for "metadata" (Sam's v7
+    // serial log, 2026-10-25). Extracting it now means fresh
+    // installs never need another 1.6 GB download for it.
+    private val WANTED_FILES =
+        setOf("kernel-ranchu", "ramdisk.img", "system.img", "vendor.img", "encryptionkey.img")
 
     fun downloadDir(context: Context): File = File(context.filesDir, "guest-download")
     fun downloadZip(context: Context): File = File(downloadDir(context), "arm64-v8a-34_r14.zip")
@@ -153,7 +156,7 @@ object GuestImageManager {
             zip.delete()
             val missing = WANTED_FILES - found
             return if (missing.isEmpty()) {
-                "Guest image ready: kernel-ranchu, ramdisk.img, system.img, vendor.img extracted."
+                "Guest image ready: kernel-ranchu, ramdisk.img, system.img, vendor.img, encryptionkey.img extracted."
             } else {
                 "Download verified but zip is missing: ${missing.joinToString(", ")}. " +
                     "Do not start the VM — report this exact list."

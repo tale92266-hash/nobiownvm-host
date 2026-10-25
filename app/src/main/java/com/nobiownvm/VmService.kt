@@ -150,6 +150,19 @@ class VmService : Service() {
             )
             return START_NOT_STICKY
         }
+        // v8: /metadata disk (encryptionkey.img, or a locally created
+        // GPT metadata.img for older installs). Without it, init
+        // first stage waits forever for the "metadata" partition
+        // (Sam's v7 serial log) and the guest never reaches graphics.
+        if (!QemuManager.ensureMetadataDisk(this)) {
+            blocked(
+                "Metadata disk could not be created: " +
+                    "files/guest/encryptionkey.img or metadata.img is missing " +
+                    "and a local GPT metadata disk could not be written. " +
+                    "Re-download the guest image and try again."
+            )
+            return START_NOT_STICKY
+        }
         val logFile = QemuManager.guestLog(this)
         try {
             if (logFile.exists()) logFile.delete()
