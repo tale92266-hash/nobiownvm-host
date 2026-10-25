@@ -9,45 +9,207 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="16dp">
 
-        <TextView
-            android:id="@+id/title_text"
+        <!-- Header: app icon + name, professional, violet theme -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/title_vm"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="@color/nobi_violet_dark" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/subtitle_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/subtitle_vm"
-            android:textSize="14sp"
-            android:textColor="@color/text_grey" />
+            <ImageView
+                android:id="@+id/header_icon"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@mipmap/ic_launcher"
+                android:contentDescription="@string/app_name" />
 
-        <TextView
-            android:id="@+id/blocker_text"
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/title_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title_vm"
+                    android:textSize="26sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/nobi_violet_dark" />
+
+                <TextView
+                    android:id="@+id/subtitle_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/subtitle_vm"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_grey" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- (1) VM status card: coloured dot + status text -->
+        <LinearLayout
+            android:id="@+id/row_vm"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:padding="12dp"
-            android:background="#FEF2F2"
-            android:text="@string/blocker_text"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="14dp"
+            android:background="@drawable/card_bg">
+
+            <View
+                android:id="@+id/status_dot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/dot_grey" />
+
+            <TextView
+                android:id="@+id/row_vm_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:text="@string/label_vm_status"
+                android:textSize="16sp"
+                android:textColor="@color/text_dark" />
+
+            <TextView
+                android:id="@+id/row_vm_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_stopped"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_bad" />
+        </LinearLayout>
+
+        <!-- (2) Guest screen, large and visible without scrolling past buttons -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/section_guest_screen"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
+
+        <FrameLayout
+            android:id="@+id/vnc_container"
+            android:layout_width="match_parent"
+            android:layout_height="380dp"
+            android:layout_marginTop="8dp"
+            android:background="@color/vnc_bg">
+
+            <com.nobiownvm.VncView
+                android:id="@+id/vnc_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+
+        <!-- (3) Controls: Start (primary) / Stop (secondary), with icons -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/section_controls"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/button_start_vm"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="@color/nobi_violet_dark"
+                android:drawableStart="@drawable/ic_play"
+                android:drawablePadding="8dp"
+                android:text="@string/button_start_vm"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/button_stop_vm"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:backgroundTint="@color/text_grey"
+                android:drawableStart="@drawable/ic_stop"
+                android:drawablePadding="8dp"
+                android:text="@string/button_stop_vm"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- (4) Guest image section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/section_guest_image"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
+
+        <Button
+            android:id="@+id/button_download_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/nobi_violet_dark"
+            android:drawableStart="@drawable/ic_download"
+            android:drawablePadding="8dp"
+            android:text="@string/button_download_image"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/button_guest_image_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:drawableStart="@drawable/ic_info"
+            android:drawablePadding="8dp"
+            android:text="@string/button_guest_image_info"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/row_download_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/download_not_started"
             android:textSize="13sp"
-            android:textColor="@color/status_bad" />
+            android:textColor="@color/text_grey" />
+
+        <!-- System status rows (compact, same IDs as before) -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/section_system"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
 
         <LinearLayout
             android:id="@+id/row_qemu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:padding="12dp"
-            android:background="@color/row_bg">
+            android:background="@drawable/card_bg">
 
             <TextView
                 android:id="@+id/row_qemu_label"
@@ -55,7 +217,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/label_qemu"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textColor="@color/text_dark" />
 
             <TextView
@@ -75,7 +237,7 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:padding="12dp"
-            android:background="@color/row_bg">
+            android:background="@drawable/card_bg">
 
             <TextView
                 android:id="@+id/row_image_label"
@@ -83,7 +245,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/label_guest_image"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textColor="@color/text_dark" />
 
             <TextView
@@ -103,7 +265,7 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:padding="12dp"
-            android:background="@color/row_bg">
+            android:background="@drawable/card_bg">
 
             <TextView
                 android:id="@+id/row_pagesize_label"
@@ -111,7 +273,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/label_pagesize"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textColor="@color/text_dark" />
 
             <TextView
@@ -131,7 +293,7 @@
             android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:padding="12dp"
-            android:background="@color/row_bg">
+            android:background="@drawable/card_bg">
 
             <TextView
                 android:id="@+id/row_config_label"
@@ -139,7 +301,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/label_config"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textColor="@color/text_dark" />
 
             <TextView
@@ -151,98 +313,26 @@
                 android:textColor="@color/text_dark" />
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/row_vm"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            android:padding="12dp"
-            android:background="@color/row_bg">
-
-            <TextView
-                android:id="@+id/row_vm_label"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/label_vm_status"
-                android:textSize="16sp"
-                android:textColor="@color/text_dark" />
-
-            <TextView
-                android:id="@+id/row_vm_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/status_stopped"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="@color/status_bad" />
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/button_start_vm"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/button_start_vm"
-            android:textSize="17sp" />
-
-        <Button
-            android:id="@+id/button_stop_vm"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/button_stop_vm"
-            android:textSize="17sp" />
-
-        <Button
-            android:id="@+id/button_guest_image_info"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/button_guest_image_info"
-            android:textSize="17sp" />
-
-        <Button
-            android:id="@+id/button_download_image"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/button_download_image"
-            android:textSize="17sp" />
-
+        <!-- (5) QEMU log section -->
         <TextView
-            android:id="@+id/row_download_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/download_not_started"
-            android:textSize="13sp"
-            android:textColor="@color/text_grey" />
-
-        <FrameLayout
-            android:id="@+id/vnc_container"
-            android:layout_width="match_parent"
-            android:layout_height="320dp"
             android:layout_marginTop="20dp"
-            android:background="@color/vnc_bg">
-
-            <!-- Real VNC view (Phase 3): minimal RFB client, see
-                 VncView.kt. It draws its own status text until the
-                 first guest framebuffer arrives. -->
-            <com.nobiownvm.VncView
-                android:id="@+id/vnc_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </FrameLayout>
+            android:text="@string/section_qemu_log"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/nobi_violet_dark" />
 
         <Button
             android:id="@+id/button_show_qemu_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/nobi_violet_dark"
+            android:drawableStart="@drawable/ic_log"
+            android:drawablePadding="8dp"
             android:text="@string/button_show_qemu_log"
-            android:textSize="17sp" />
+            android:textSize="15sp" />
 
         <Button
             android:id="@+id/button_copy_qemu_log"
@@ -250,7 +340,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="@string/button_copy_qemu_log"
-            android:textSize="17sp" />
+            android:textSize="15sp" />
 
         <ScrollView
             android:id="@+id/qemu_log_scroll"

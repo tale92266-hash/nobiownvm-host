@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageStatus: TextView
     private lateinit var pagesizeStatus: TextView
     private lateinit var vmStatus: TextView
+    private lateinit var statusDot: android.view.View
     private lateinit var downloadStatus: TextView
     private lateinit var qemuLogText: TextView
     private lateinit var vncView: VncView
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         imageStatus = findViewById(R.id.row_image_status)
         pagesizeStatus = findViewById(R.id.row_pagesize_status)
         vmStatus = findViewById(R.id.row_vm_status)
+        statusDot = findViewById(R.id.status_dot)
         downloadStatus = findViewById(R.id.row_download_status)
         qemuLogText = findViewById(R.id.qemu_log_text)
         vncView = findViewById(R.id.vnc_view)
@@ -231,5 +233,13 @@ class MainActivity : AppCompatActivity() {
             if (detail.isEmpty()) state else "$state: $detail",
             state == VmService.STATE_RUNNING
         )
+        // Status dot: green = Running, red = Stopped/Failed/Blocked,
+        // grey = Starting/idle.
+        val dot = when (state) {
+            VmService.STATE_RUNNING -> R.drawable.dot_green
+            VmService.STATE_STARTING -> R.drawable.dot_grey
+            else -> R.drawable.dot_red
+        }
+        statusDot.setBackgroundResource(dot)
     }
 }
