@@ -7,6 +7,23 @@ android {
     namespace = "com.nobiownvm"
     compileSdk = 35
 
+    // Fixed signing key (v4+): in CI, ANDROID_KEYSTORE_FILE points at the
+    // keystore decoded from the ANDROID_KEYSTORE_BASE64 GitHub Secret, so
+    // every CI build signs with the SAME key and installs over previous
+    // builds without uninstall (which used to wipe the guest image).
+    // Locally, with no env vars set, the default debug key is used.
+    signingConfigs {
+        getByName("debug") {
+            val ksFile = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (!ksFile.isNullOrEmpty()) {
+                storeFile = file(ksFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.nobiownvm"
         minSdk = 24
